@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/olekukonko/tablewriter"
 )
 
 type searchParams struct {
@@ -174,8 +176,35 @@ func searchHandler() {
 		fmt.Println("Price:", flight.Price.Total)
 	}
 
+	table := tablewriter.NewWriter(os.Stdout)
+
+	// Definir las cabeceras de la tabla
+	table.SetHeader([]string{"ID", "Departure Time", "Arrival Time", "Carrier Code", "Flight Number", "Aircraft Code", "Total Price"})
+
+	// Recorrer los datos y agregar filas a la tabla
+	for _, dataItem := range flightSearchResponse.Data {
+		for _, itinerary := range dataItem.Itineraries {
+			for _, segment := range itinerary.Segments {
+				// Obtener los valores de cada campo
+				id := dataItem.ID
+				departureTime := segment.Departure.DerpartureTime
+				arrivalTime := segment.Arrival.ArrivalTime
+				carrierCode := segment.CarrierCode
+				flightNumber := segment.Number
+				aircraftCode := segment.Aircraft.Code
+				totalPrice := dataItem.Price.Total
+
+				// Agregar una fila a la tabla
+				table.Append([]string{id, departureTime, arrivalTime, carrierCode, flightNumber, aircraftCode, totalPrice})
+			}
+		}
+	}
+
+	// Renderizar la tabla
+	table.Render()
+
 	var flightID int
-	fmt.Print("Ingrese una opción: ")
+	fmt.Print("Selecciones un vuelo: ")
 	_, err = fmt.Scanf("%d", &flightID)
 
 	var pricingData FlightPriceRequest

@@ -129,6 +129,32 @@ type FlightSearchResponse struct {
 	} `json:"data"`
 }
 
+type FlightData struct {
+	Data []struct {
+		PricingDate []struct {
+			ID          int `json:"id"`
+			Itineraries []struct {
+				Segments []struct {
+					Departure struct {
+						DepartureTime string `json:"at"`
+					} `json:"departure"`
+					Arrival struct {
+						ArrivalTime string `json:"at"`
+					} `json:"arrival"`
+					CarrierCode string `json:"carrierCode"`
+					Number      string `json:"number"`
+					Aircraft    struct {
+						Code string `json:"code"`
+					} `json:"aircraft"`
+				} `json:"segments"`
+			} `json:"itineraries"`
+			Price struct {
+				Total float64 `json:"total"`
+			} `json:"price"`
+		} `json:"pricingDate"`
+	} `json:"data"`
+}
+
 /*type FlightSearchResponse struct {
 	Meta struct {
 		Count int `json:"count"`
@@ -275,14 +301,15 @@ func main() {
 	// Define your flight search parameters
 	origin := "ARI"
 	destination := "SCL"
-	departureDate := "2023-12-15"
+	departureDate := "2023-12-02"
 	adults := 1
 
-	url := fmt.Sprintf("https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=%s&destinationLocationCode=%s&departureDate=%s&adults=%v&includedAirlineCodes=LA,JA,H2&nonStop=true&currencyCode=CLP&travelClass=ECONOMY", origin, destination, departureDate, adults)
+	url := fmt.Sprintf("https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=%s&destinationLocationCode=%s&departureDate=%s&adults=%v&includedAirlineCodes=H2,LA,JA,H2&nonStop=true&currencyCode=CLP&travelClass=ECONOMY", origin, destination, departureDate, adults)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic(err)
 	}
+	req.Close = true
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	client := &http.Client{}
@@ -292,18 +319,33 @@ func main() {
 	}
 	defer resp.Body.Close()
 
+	var responseDatamap map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&responseDatamap); err != nil {
+		fmt.Println("Error al decodificar la respuesta JSON del GET:", err)
+		return
+	}
+	//fmt.Println(responseDatamap)
+	/*var test_data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&test_data); err != nil {
+		fmt.Println("Error al decodificar la respuesta JSON:", err)
+		return
+	}
+	for key, value := range test_data {
+		fmt.Printf("Clave: %s, Valor: %v\n", key, value)
+	}*/
+
 	// Decode the flight search response JSON (customize FlightSearchResponse structure)
-	var flightSearchResponse FlightSearchResponse
+	/*var flightSearchResponse FlightSearchResponse
 	err = json.NewDecoder(resp.Body).Decode(&flightSearchResponse)
 	if err != nil {
 		fmt.Println("Error decoding flight search response:", err)
 		return
 	}
-
+	*/
 	// Process and print flight search results as needed
-	fmt.Println("Flight Search Results:")
+	//fmt.Println("Flight Search Results:")
 
-	for _, flight := range flightSearchResponse.Data {
+	/*for _, flight := range flightSearchResponse.Data {
 		fmt.Println("Flight ID:", flight.ID)
 		for _, itinerary := range flight.Itineraries {
 			for _, segment := range itinerary.Segments {
@@ -315,7 +357,7 @@ func main() {
 			}
 		}
 		fmt.Println("Price:", flight.Price.Total)
-	}
+	}*/
 
 	/* 	var flightPriceRequest FlightPriceRequest
 	   	flightPriceRequest.Data.FlightOffers[0].Itineraries[0].Segments[0].Departure.At = "2023-12-15T01:02:00"
@@ -326,9 +368,16 @@ func main() {
 
 	//Create a POST request for pricing
 	pricingURL := "https://test.api.amadeus.com/v2/shopping/flight-offers/pricing"
-	pricingData := flightSearchResponse.Data[0]
-	fmt.Println("Pricing Request:", pricingData)
-	pricingRequestData, _ := json.Marshal(pricingData)
+	//pricingData := flightSearchResponse.Data[0]
+	//fmt.Println("princingDate:", flightSearchResponse)
+	//fmt.Println("Pricing Request:", pricingData)
+	//var flightdata FlightData // Ajusta el tipo de estructura según la respuesta JSON
+
+	/*if err := json.NewDecoder(resp.Body).Decode(&flightdata); err != nil {
+		fmt.Println("Error al decodificar la respuesta JSON del GET:", err)
+		return
+	}*/
+	pricingRequestData, _ := json.Marshal(responseDatamap)
 	req2, err := http.NewRequest("POST", pricingURL, bytes.NewBuffer(pricingRequestData))
 	if err != nil {
 		panic(err)
@@ -344,16 +393,44 @@ func main() {
 	defer resp.Body.Close()
 
 	fmt.Println("status code:", resp2.StatusCode)
+	//fmt.Println("resp2", resp2)
+
+	var responsePricemap map[string]interface{}
+	if err := json.NewDecoder(resp2.Body).Decode(&responsePricemap); err != nil {
+		fmt.Println("Error al decodificar la respuesta JSON del GET:", err)
+		return
+	}
+	fmt.Println(responsePricemap)
 
 	// Decode the pricing response JSON
-	var pricingResponse PricingResponse
+	/*var pricingResponse PricingResponse
 	err = json.NewDecoder(resp2.Body).Decode(&pricingResponse)
 	if err != nil {
 		fmt.Println("Error decoding pricing response:", err)
 		return
 	}
+
 	fmt.Println("Pricing Response:", pricingResponse)
 	for _, flight := range pricingResponse.FlightOffers {
 		fmt.Println("Price: ", flight.Price.Total)
+	}*/
+	var response struct {
+		Data []struct {
+			ID    int `json:"id"`
+			Price struct {
+				GrandTotal float64 `json:"grandTotal"`
+			} `json:"price"`
+		} `json:"data"`
+	}
+
+	// Decodificar el JSON en la estructura
+	if err := json.Unmarshal([]byte(responsePricemap), &response); err != nil {
+		fmt.Println("Error al decodificar JSON:", err)
+		return
+	}
+
+	// Acceder a los valores específicos
+	for _, item := range response.Data {
+		fmt.Printf("ID: %d, GrandTotal: %.2f\n", item.ID, item.Price.GrandTotal)
 	}
 }
