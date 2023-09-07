@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 )
 
@@ -25,6 +27,108 @@ type PricingResponse struct {
 			} `json:"price"`
 		} `json:"travelerPricings"`
 	} `json:"flightOffers"`
+}
+
+type FlightPrice struct {
+	Data struct {
+		Type         string        `json:"type"`
+		FlightOffers []interface{} `json:"flightOffers"`
+	} `json:"data"`
+}
+
+type FlighOffers struct {
+	Data []struct {
+		Type                     string `json:"type"`
+		ID                       string `json:"id"`
+		Source                   string `json:"source"`
+		InstantTicketingRequired bool   `json:"instantTicketingRequired"`
+		NonHomogeneous           bool   `json:"nonHomogeneous"`
+		OneWay                   bool   `json:"oneWay"`
+		LastTicketingDate        string `json:"lastTicketingDate"`
+		NumberOfBookableSeats    int    `json:"numberOfBookableSeats"`
+		Itineraries              []struct {
+			Duration string `json:"duration"`
+			Segments []struct {
+				Departure struct {
+					IataCode string `json:"iataCode"`
+					Terminal string `json:"terminal"`
+					At       string `json:"at"`
+				} `json:"departure"`
+				Arrival struct {
+					IataCode string `json:"iataCode"`
+					At       string `json:"at"`
+				} `json:"arrival"`
+				CarrierCode string `json:"carrierCode"`
+				Number      string `json:"number"`
+				Aircraft    struct {
+					Code string `json:"code"`
+				} `json:"aircraft"`
+				Operating struct {
+					CarrierCode string `json:"carrierCode"`
+				} `json:"operating"`
+				Duration        string `json:"duration"`
+				ID              string `json:"id"`
+				NumberOfStops   int    `json:"numberOfStops"`
+				BlacklistedInEU bool   `json:"blacklistedInEU"`
+			} `json:"segments"`
+		} `json:"itineraries"`
+		Price struct {
+			Currency string `json:"currency"`
+			Total    string `json:"total"`
+			Base     string `json:"base"`
+			Fees     []struct {
+				Amount string `json:"amount"`
+				Type   string `json:"type"`
+			} `json:"fees"`
+			GrandTotal string `json:"grandTotal"`
+		} `json:"price"`
+		PricingOptions struct {
+			FareType                []string `json:"fareType"`
+			IncludedCheckedBagsOnly bool     `json:"includedCheckedBagsOnly"`
+		} `json:"pricingOptions"`
+		ValidatingAirlineCodes []string `json:"validatingAirlineCodes"`
+		TravelerPricings       []struct {
+			TravelerID   string `json:"travelerId"`
+			FareOption   string `json:"fareOption"`
+			TravelerType string `json:"travelerType"`
+			Price        struct {
+				Currency string `json:"currency"`
+				Total    string `json:"total"`
+				Base     string `json:"base"`
+			} `json:"price"`
+			FareDetailsBySegment []struct {
+				SegmentID           string `json:"segmentId"`
+				Cabin               string `json:"cabin"`
+				FareBasis           string `json:"fareBasis"`
+				Class               string `json:"class"`
+				IncludedCheckedBags struct {
+					Weight     int    `json:"weight"`
+					WeightUnit string `json:"weightUnit"`
+				} `json:"includedCheckedBags"`
+			} `json:"fareDetailsBySegment"`
+		} `json:"travelerPricings"`
+	} `json:"data"`
+	Dictionaries struct {
+		Locations struct {
+			BKK struct {
+				CityCode    string `json:"cityCode"`
+				CountryCode string `json:"countryCode"`
+			} `json:"BKK"`
+			SYD struct {
+				CityCode    string `json:"cityCode"`
+				CountryCode string `json:"countryCode"`
+			} `json:"SYD"`
+		} `json:"locations"`
+		Aircraft struct {
+			Num747 string `json:"747"`
+		} `json:"aircraft"`
+		Currencies struct {
+			EUR string `json:"EUR"`
+		} `json:"currencies"`
+		Carriers struct {
+			TG string `json:"TG"`
+		} `json:"carriers"`
+	} `json:"dictionaries"`
 }
 
 type FlightPriceRequest struct {
@@ -304,7 +408,7 @@ func main() {
 	departureDate := "2023-12-02"
 	adults := 1
 
-	url := fmt.Sprintf("https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=%s&destinationLocationCode=%s&departureDate=%s&adults=%v&includedAirlineCodes=H2,LA,JA,H2&nonStop=true&currencyCode=CLP&travelClass=ECONOMY", origin, destination, departureDate, adults)
+	url := fmt.Sprintf("https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=%s&destinationLocationCode=%s&departureDate=%s&adults=%v&includedAirlineCodes=H2,LA,HA&nonStop=true&currencyCode=CLP&travelClass=ECONOMY", origin, destination, departureDate, adults)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic(err)
@@ -318,32 +422,49 @@ func main() {
 		panic(err)
 	}
 	defer resp.Body.Close()
+	// Leer y mostrar el contenido de la respuesta
+	/*body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error al leer la respuesta:", err)
+		return
+	}
+	responseString := string(body)
+	fmt.Println("Respuesta GET:")
+	fmt.Println(responseString)*/
 
-	var responseDatamap map[string]interface{}
+	/*var responseDatamap map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&responseDatamap); err != nil {
 		fmt.Println("Error al decodificar la respuesta JSON del GET:", err)
 		return
-	}
-	//fmt.Println(responseDatamap)
-	/*var test_data map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&test_data); err != nil {
-		fmt.Println("Error al decodificar la respuesta JSON:", err)
-		return
-	}
-	for key, value := range test_data {
-		fmt.Printf("Clave: %s, Valor: %v\n", key, value)
 	}*/
 
+	//fmt.Println(responseDatamap)
+	/*var test_data map[string]interface{}
+	 */
+
 	// Decode the flight search response JSON (customize FlightSearchResponse structure)
-	/*var flightSearchResponse FlightSearchResponse
+	var flightSearchResponse FlighOffers
 	err = json.NewDecoder(resp.Body).Decode(&flightSearchResponse)
 	if err != nil {
 		fmt.Println("Error decoding flight search response:", err)
 		return
 	}
-	*/
+
+	for i := range flightSearchResponse.Data {
+		for j := range flightSearchResponse.Data[i].Itineraries {
+			for k := range flightSearchResponse.Data[i].Itineraries[j].Segments {
+				if flightSearchResponse.Data[i].Itineraries[j].Segments[k].Operating.CarrierCode == "" {
+					// Si 'operating.carrierCode' está vacío, asigna el valor de 'carrierCode' de nivel superior.
+					flightSearchResponse.Data[i].Itineraries[j].Segments[k].Operating.CarrierCode = flightSearchResponse.Data[i].Itineraries[j].Segments[k].CarrierCode
+				}
+			}
+		}
+	}
+	totalPrice := flightSearchResponse.Data[0].Price.Total
+	fmt.Printf("Total Price: %s\n", totalPrice)
 	// Process and print flight search results as needed
 	//fmt.Println("Flight Search Results:")
+	//fmt.Println(flightSearchResponse.Data[0])
 
 	/*for _, flight := range flightSearchResponse.Data {
 		fmt.Println("Flight ID:", flight.ID)
@@ -367,7 +488,6 @@ func main() {
 	   	flightPriceRequest.Data.FlightOffers[0].Itineraries[0].Segments[0].Aircraft.Code = "320" */
 
 	//Create a POST request for pricing
-	pricingURL := "https://test.api.amadeus.com/v2/shopping/flight-offers/pricing"
 	//pricingData := flightSearchResponse.Data[0]
 	//fmt.Println("princingDate:", flightSearchResponse)
 	//fmt.Println("Pricing Request:", pricingData)
@@ -376,61 +496,63 @@ func main() {
 	/*if err := json.NewDecoder(resp.Body).Decode(&flightdata); err != nil {
 		fmt.Println("Error al decodificar la respuesta JSON del GET:", err)
 		return
+
+
 	}*/
-	pricingRequestData, _ := json.Marshal(responseDatamap)
-	req2, err := http.NewRequest("POST", pricingURL, bytes.NewBuffer(pricingRequestData))
+	/*flightPriceInstance := FlightPrice{
+		Data: struct {
+			Type         string        `json:"type"`
+			FlightOffers []interface{} `json:"flightOffers"`
+		}{
+			Type:         "flight-offers-pricing",
+			FlightOffers: []interface{}{flightSearchResponse.Data[0]},
+		},
+	}*/
+	flightOfferJSON, err := json.Marshal(flightSearchResponse.Data[0])
 	if err != nil {
-		panic(err)
+		fmt.Println("Error al convertir a JSON:", err)
+		return
+	}
+	flightOffersJSON := `{"data":{"type": "flight-offers-pricing","flightOffers": [`
+	flightOffersJSON += string(flightOfferJSON) // Supongamos que flightSearchResponse.Data[0] es un JSON válido
+	flightOffersJSON += `]}}`
+	//flightjson := string(flightOfferJSON)
+	//var flightData = strings.NewReader(flightjson)
+	//fmt.Println(flightOffersJSON)
+
+	flightData := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type":         "flight-offers-pricing",
+			"flightOffers": []interface{}{flightSearchResponse.Data[0]},
+		},
+	}
+
+	pricingData, _ := json.Marshal(flightData)
+	//fmt.Println("flightData", string(pricingData))
+	//pricingRequestData, _ := json.Marshal(flightPriceInstance)
+	//jsonString := string(pricingRequestData)
+	//data := strings.NewReader(jsonString)
+	//fmt.Println("JSON codificado:", jsonString)
+	req2, err2 := http.NewRequest("POST", "https://test.api.amadeus.com/v1/shopping/flight-offers/pricing", bytes.NewBuffer(pricingData))
+
+	//req2, err2 := http.NewRequest("POST", "https://test.api.amadeus.com/v1/shopping/flight-offers/pricing", bytes.NewBuffer([]byte(flightOffersJSON)))
+	if err != nil {
+		panic(err2)
 	}
 	req2.Header.Set("Authorization", "Bearer "+accessToken)
 	req2.Header.Set("Content-Type", "application/json")
 
-	client = &http.Client{}
-	resp2, err2 := client.Do(req)
-	if err != nil {
-		panic(err2)
+	client2 := &http.Client{}
+	resp2, err2 := client2.Do(req2)
+	if err2 != nil {
+		log.Fatal(err2)
 	}
 	defer resp.Body.Close()
-
-	fmt.Println("status code:", resp2.StatusCode)
-	//fmt.Println("resp2", resp2)
-
-	var responsePricemap map[string]interface{}
-	if err := json.NewDecoder(resp2.Body).Decode(&responsePricemap); err != nil {
-		fmt.Println("Error al decodificar la respuesta JSON del GET:", err)
-		return
+	bodyText, err3 := io.ReadAll(resp2.Body)
+	if err3 != nil {
+		log.Fatal(err3)
 	}
-	fmt.Println(responsePricemap)
+	fmt.Println(resp.StatusCode)
+	fmt.Printf("%s\n", bodyText)
 
-	// Decode the pricing response JSON
-	/*var pricingResponse PricingResponse
-	err = json.NewDecoder(resp2.Body).Decode(&pricingResponse)
-	if err != nil {
-		fmt.Println("Error decoding pricing response:", err)
-		return
-	}
-
-	fmt.Println("Pricing Response:", pricingResponse)
-	for _, flight := range pricingResponse.FlightOffers {
-		fmt.Println("Price: ", flight.Price.Total)
-	}*/
-	var response struct {
-		Data []struct {
-			ID    int `json:"id"`
-			Price struct {
-				GrandTotal float64 `json:"grandTotal"`
-			} `json:"price"`
-		} `json:"data"`
-	}
-
-	// Decodificar el JSON en la estructura
-	if err := json.Unmarshal([]byte(responsePricemap), &response); err != nil {
-		fmt.Println("Error al decodificar JSON:", err)
-		return
-	}
-
-	// Acceder a los valores específicos
-	for _, item := range response.Data {
-		fmt.Printf("ID: %d, GrandTotal: %.2f\n", item.ID, item.Price.GrandTotal)
-	}
 }
