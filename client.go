@@ -179,7 +179,7 @@ func searchHandler() {
 	table := tablewriter.NewWriter(os.Stdout)
 
 	// Definir las cabeceras de la tabla
-	table.SetHeader([]string{"ID", "Departure Time", "Arrival Time", "Carrier Code", "Flight Number", "Aircraft Code", "Total Price"})
+	table.SetHeader([]string{"VUELO", "NÚMERO", "HORA DE SALIDA", "HORA DE LLEGADA", "AVIÓN", "PRECIO TOTAL"})
 
 	// Recorrer los datos y agregar filas a la tabla
 	for _, dataItem := range flightSearchResponse.Data {
@@ -189,13 +189,13 @@ func searchHandler() {
 				id := dataItem.ID
 				departureTime := segment.Departure.DerpartureTime
 				arrivalTime := segment.Arrival.ArrivalTime
-				carrierCode := segment.CarrierCode
+				//carrierCode := segment.CarrierCode
 				flightNumber := segment.Number
 				aircraftCode := segment.Aircraft.Code
 				totalPrice := dataItem.Price.Total
 
 				// Agregar una fila a la tabla
-				table.Append([]string{id, departureTime, arrivalTime, carrierCode, flightNumber, aircraftCode, totalPrice})
+				table.Append([]string{id, flightNumber, departureTime, arrivalTime, aircraftCode, totalPrice})
 			}
 		}
 	}
