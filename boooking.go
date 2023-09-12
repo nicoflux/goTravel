@@ -629,8 +629,8 @@ func main() {
 	req3.Header.Set("Content-Type", "application/json")
 	req3.Header.Set("Authorization", "Bearer "+accessToken)
 	resp3, err3 := client.Do(req3)
-	if err != nil {
-		log.Fatal(err)
+	if err3 != nil {
+		log.Fatal(err3)
 	}
 	defer resp3.Body.Close()
 	bodyText3, err := io.ReadAll(resp3.Body)

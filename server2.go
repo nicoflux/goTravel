@@ -281,12 +281,148 @@ type PricingResponse struct {
 	} `json:"data"`
 }
 
-type booking struct {
-	NAME string `json:"name"`
+type BookingRequest struct {
+	Data struct {
+		Type         string `json:"type"`
+		FlightOffers []struct {
+			Type                     string `json:"type"`
+			ID                       string `json:"id"`
+			Source                   string `json:"source"`
+			InstantTicketingRequired bool   `json:"instantTicketingRequired"`
+			NonHomogeneous           bool   `json:"nonHomogeneous"`
+			LastTicketingDate        string `json:"lastTicketingDate"`
+			Itineraries              []struct {
+				Segments []struct {
+					Departure struct {
+						IataCode string `json:"iataCode"`
+						At       string `json:"at"`
+					} `json:"departure,omitempty"`
+					Arrival struct {
+						IataCode string `json:"iataCode"`
+						Terminal string `json:"terminal"`
+						At       string `json:"at"`
+					} `json:"arrival,omitempty"`
+					CarrierCode string `json:"carrierCode"`
+					Number      string `json:"number"`
+					Aircraft    struct {
+						Code string `json:"code"`
+					} `json:"aircraft"`
+					Operating struct {
+						CarrierCode string `json:"carrierCode"`
+					} `json:"operating"`
+					ID            string `json:"id"`
+					NumberOfStops int    `json:"numberOfStops"`
+				} `json:"segments"`
+			} `json:"itineraries"`
+			Price struct {
+				Currency string `json:"currency"`
+				Total    string `json:"total"`
+				Base     string `json:"base"`
+				Fees     []struct {
+					Amount string `json:"amount"`
+					Type   string `json:"type"`
+				} `json:"fees"`
+				GrandTotal      string `json:"grandTotal"`
+				BillingCurrency string `json:"billingCurrency"`
+			} `json:"price"`
+			PricingOptions struct {
+				FareType                []string `json:"fareType"`
+				IncludedCheckedBagsOnly bool     `json:"includedCheckedBagsOnly"`
+			} `json:"pricingOptions"`
+			ValidatingAirlineCodes []string `json:"validatingAirlineCodes"`
+			TravelerPricings       []struct {
+				TravelerID   string `json:"travelerId"`
+				FareOption   string `json:"fareOption"`
+				TravelerType string `json:"travelerType"`
+				Price        struct {
+					Currency string `json:"currency"`
+					Total    string `json:"total"`
+					Base     string `json:"base"`
+					Taxes    []struct {
+						Amount string `json:"amount"`
+						Code   string `json:"code"`
+					} `json:"taxes"`
+				} `json:"price"`
+				FareDetailsBySegment []struct {
+					SegmentID           string `json:"segmentId"`
+					Cabin               string `json:"cabin"`
+					FareBasis           string `json:"fareBasis"`
+					Class               string `json:"class"`
+					IncludedCheckedBags struct {
+						Quantity int `json:"quantity"`
+					} `json:"includedCheckedBags"`
+				} `json:"fareDetailsBySegment"`
+			} `json:"travelerPricings"`
+		} `json:"flightOffers"`
+		Travelers []Traveler
+		Remarks   struct {
+			General []struct {
+				SubType string `json:"subType"`
+				Text    string `json:"text"`
+			} `json:"general"`
+		} `json:"remarks"`
+		TicketingAgreement struct {
+			Option string `json:"option"`
+			Delay  string `json:"delay"`
+		} `json:"ticketingAgreement"`
+		Contacts []struct {
+			AddresseeName struct {
+				FirstName string `json:"firstName"`
+				LastName  string `json:"lastName"`
+			} `json:"addresseeName"`
+			CompanyName string `json:"companyName"`
+			Purpose     string `json:"purpose"`
+			Phones      []struct {
+				DeviceType         string `json:"deviceType"`
+				CountryCallingCode string `json:"countryCallingCode"`
+				Number             string `json:"number"`
+			} `json:"phones"`
+			EmailAddress string `json:"emailAddress"`
+			Address      struct {
+				Lines       []string `json:"lines"`
+				PostalCode  string   `json:"postalCode"`
+				CityName    string   `json:"cityName"`
+				CountryCode string   `json:"countryCode"`
+			} `json:"address"`
+		} `json:"contacts"`
+	} `json:"data"`
 }
 
-var flights = flightsOffer{
-	ID: "123",
+type Traveler struct {
+	ID          string `json:"id"`
+	DateOfBirth string `json:"dateOfBirth"`
+	Name        struct {
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+	} `json:"name"`
+	Gender  string `json:"gender"`
+	Contact struct {
+		EmailAddress string `json:"emailAddress"`
+		Phones       []struct {
+			DeviceType         string `json:"deviceType"`
+			CountryCallingCode string `json:"countryCallingCode"`
+			Number             string `json:"number"`
+		} `json:"phones"`
+	} `json:"contact"`
+	Documents []struct {
+		DocumentType     string `json:"documentType"`
+		BirthPlace       string `json:"birthPlace"`
+		IssuanceLocation string `json:"issuanceLocation"`
+		IssuanceDate     string `json:"issuanceDate"`
+		Number           string `json:"number"`
+		ExpiryDate       string `json:"expiryDate"`
+		IssuanceCountry  string `json:"issuanceCountry"`
+		ValidityCountry  string `json:"validityCountry"`
+		Nationality      string `json:"nationality"`
+		Holder           bool   `json:"holder"`
+	} `json:"documents"`
+}
+
+type BookingResponse struct {
+	Data struct {
+		Type string `json:"type"`
+		ID   string `json:"id"`
+	} `json:"data"`
 }
 
 func getToken() string {
@@ -380,7 +516,7 @@ func priceHandler(c *gin.Context) { // function that handles the request
 	if err := c.BindJSON(&searchPrice); err != nil {
 		return
 	}
-	fmt.Print(searchPrice)
+	//fmt.Print(searchPrice)
 
 	var accessToken = getToken()
 	pricingData, _ := json.Marshal(searchPrice)
@@ -410,18 +546,39 @@ func priceHandler(c *gin.Context) { // function that handles the request
 }
 
 func bookingHandler(c *gin.Context) { // function that handles the request
-	/* if r.Method != http.MethodGet { // if the request method is not GET
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed) // return an error
+
+	var bookingRequest BookingRequest
+	var accessToken = getToken()
+
+	if err := c.BindJSON(&bookingRequest); err != nil {
 		return
-	} */
+	}
+	//fmt.Println("Here is booking request: ", bookingRequest)
 
-	var newBooking booking
+	bookingData, _ := json.Marshal(bookingRequest)
+	req, err := http.NewRequest("POST", "https://test.api.amadeus.com/v1/booking/flight-orders", bytes.NewBuffer(bookingData))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	if err := c.BindJSON(&newBooking); err != nil {
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var bookingResponse BookingResponse
+	err = json.NewDecoder(resp.Body).Decode(&bookingResponse)
+	fmt.Print("booking response", bookingResponse)
+	if err != nil {
+		fmt.Println("Error decoding flight search response:", err)
 		return
 	}
 
-	c.IndentedJSON(http.StatusCreated, newBooking)
+	c.IndentedJSON(http.StatusCreated, bookingResponse)
 }
 
 func main() {
@@ -429,7 +586,7 @@ func main() {
 	router := gin.Default()
 	router.GET("/api/search", searchHandler)
 	router.POST("/api/pricing", priceHandler)
-	//router.POST("/api/booking", bookingHandler)
+	router.POST("/api/booking", bookingHandler)
 
 	router.Run("127.0.0.1:5000")
 

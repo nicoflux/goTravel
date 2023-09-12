@@ -95,6 +95,43 @@ type FlightOffers struct {
 	} `json:"data"`
 }
 
+type Traveler struct {
+	ID          string `json:"id"`
+	DateOfBirth string `json:"dateOfBirth"`
+	Name        struct {
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+	} `json:"name"`
+	Gender  string `json:"gender"`
+	Contact struct {
+		EmailAddress string `json:"emailAddress"`
+		Phones       []struct {
+			DeviceType         string `json:"deviceType"`
+			CountryCallingCode string `json:"countryCallingCode"`
+			Number             string `json:"number"`
+		} `json:"phones"`
+	} `json:"contact"`
+	Documents []struct {
+		DocumentType     string `json:"documentType"`
+		BirthPlace       string `json:"birthPlace"`
+		IssuanceLocation string `json:"issuanceLocation"`
+		IssuanceDate     string `json:"issuanceDate"`
+		Number           string `json:"number"`
+		ExpiryDate       string `json:"expiryDate"`
+		IssuanceCountry  string `json:"issuanceCountry"`
+		ValidityCountry  string `json:"validityCountry"`
+		Nationality      string `json:"nationality"`
+		Holder           bool   `json:"holder"`
+	} `json:"documents"`
+}
+
+type BookingResponse struct {
+	Data struct {
+		Type string `json:"type"`
+		ID   string `json:"id"`
+	} `json:"data"`
+}
+
 type FlightPriceRequest struct {
 	Data struct {
 		Type         string `json:"type"`
@@ -318,16 +355,19 @@ func searchHandler() {
 	table.Render()
 
 	var flightID int
-	fmt.Print("Seleccione un vuelo: ")
+	fmt.Print("Seleccione un vuelo (ingrese 0 para realizar nueva búsqueda): ")
 	_, err = fmt.Scanf("%d", &flightID)
+	if flightID == 0 {
+		return
+	}
 
 	flightPriceData := map[string]interface{}{
 		"data": map[string]interface{}{
 			"type":         "flight-offers-pricing",
-			"flightOffers": []interface{}{flightSearchResponse.Data[flightID]},
+			"flightOffers": []interface{}{flightSearchResponse.Data[flightID-1]},
 		},
 	}
-	fmt.Println(flightPriceData)
+	//fmt.Println(flightPriceData)
 	pricingData, _ := json.Marshal(flightPriceData)
 
 	req, err = http.NewRequest("POST", "http://127.0.0.1:5000/api/pricing", bytes.NewBuffer(pricingData))
@@ -349,6 +389,54 @@ func searchHandler() {
 	}
 
 	fmt.Println("El precio total final es de: ", pricingResponse.Data.FlightOffers[0].Price.Total)
+
+	var traveler Traveler
+	traveler.ID = "1"
+	traveler.DateOfBirth = "1998-03-10"
+	traveler.Name.LastName = "Gonzalez"
+	traveler.Name.FirstName = "Jorge"
+	traveler.Gender = "MALE"
+	traveler.Contact.EmailAddress = "jorge.gonzalez833@telefonica.es"
+	traveler.Contact.Phones = []struct {
+		DeviceType         string `json:"deviceType"`
+		CountryCallingCode string `json:"countryCallingCode"`
+		Number             string `json:"number"`
+	}{
+		{
+			DeviceType:         "MOBILE",
+			CountryCallingCode: "56",
+			Number:             "123456789",
+		},
+	}
+
+	booking := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type":         "flight-offers-pricing",
+			"flightOffers": []interface{}{pricingResponse.Data.FlightOffers[0]},
+			"travelers":    []interface{}{traveler},
+		},
+	}
+
+	bookingData, _ := json.Marshal(booking)
+
+	req, err = http.NewRequest("POST", "http://127.0.0.1:5000/api/booking", bytes.NewBuffer(bookingData))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var bookingResponse BookingResponse
+	err = json.NewDecoder(resp.Body).Decode(&bookingResponse)
+	if err != nil {
+		fmt.Println("Error decoding flight booking response:", err)
+		return
+	}
+	fmt.Print("Reserva creada con éxito: ", bookingResponse.Data.ID)
 
 }
 
@@ -390,7 +478,7 @@ Ingrese una opción:`
 
 	for { // infinite loop
 		reader := bufio.NewReader(os.Stdin) // create a reader to read from stdin
-		fmt.Print(text)                     // print a message
+		fmt.Print(text)
 		input, _ := reader.ReadString('\n') // read from stdin until a newline character is found
 		input = strings.TrimSpace(input)    // remove the trailing newline character
 
