@@ -93,27 +93,6 @@ type FlightOffers struct {
 			} `json:"fareDetailsBySegment"`
 		} `json:"travelerPricings"`
 	} `json:"data"`
-	Dictionaries struct {
-		Locations struct {
-			BKK struct {
-				CityCode    string `json:"cityCode"`
-				CountryCode string `json:"countryCode"`
-			} `json:"BKK"`
-			SYD struct {
-				CityCode    string `json:"cityCode"`
-				CountryCode string `json:"countryCode"`
-			} `json:"SYD"`
-		} `json:"locations"`
-		Aircraft struct {
-			Num747 string `json:"747"`
-		} `json:"aircraft"`
-		Currencies struct {
-			EUR string `json:"EUR"`
-		} `json:"currencies"`
-		Carriers struct {
-			TG string `json:"TG"`
-		} `json:"carriers"`
-	} `json:"dictionaries"`
 }
 
 type FlightPriceRequest struct {
@@ -194,6 +173,82 @@ type FlightPriceRequest struct {
 	} `json:"data"`
 }
 
+type PricingResponse struct {
+	Data struct {
+		Type         string `json:"type"`
+		FlightOffers []struct {
+			Type                     string `json:"type"`
+			ID                       string `json:"id"`
+			Source                   string `json:"source"`
+			InstantTicketingRequired bool   `json:"instantTicketingRequired"`
+			NonHomogeneous           bool   `json:"nonHomogeneous"`
+			LastTicketingDate        string `json:"lastTicketingDate"`
+			Itineraries              []struct {
+				Segments []struct {
+					Departure struct {
+						IataCode string `json:"iataCode"`
+						At       string `json:"at"`
+					} `json:"departure,omitempty"`
+					Arrival struct {
+						IataCode string `json:"iataCode"`
+						Terminal string `json:"terminal"`
+						At       string `json:"at"`
+					} `json:"arrival,omitempty"`
+					CarrierCode string `json:"carrierCode"`
+					Number      string `json:"number"`
+					Aircraft    struct {
+						Code string `json:"code"`
+					} `json:"aircraft"`
+					Operating struct {
+						CarrierCode string `json:"carrierCode"`
+					} `json:"operating"`
+					ID            string `json:"id"`
+					NumberOfStops int    `json:"numberOfStops"`
+				} `json:"segments"`
+			} `json:"itineraries"`
+			Price struct {
+				Currency string `json:"currency"`
+				Total    string `json:"total"`
+				Base     string `json:"base"`
+				Fees     []struct {
+					Amount string `json:"amount"`
+					Type   string `json:"type"`
+				} `json:"fees"`
+				GrandTotal      string `json:"grandTotal"`
+				BillingCurrency string `json:"billingCurrency"`
+			} `json:"price"`
+			PricingOptions struct {
+				FareType                []string `json:"fareType"`
+				IncludedCheckedBagsOnly bool     `json:"includedCheckedBagsOnly"`
+			} `json:"pricingOptions"`
+			ValidatingAirlineCodes []string `json:"validatingAirlineCodes"`
+			TravelerPricings       []struct {
+				TravelerID   string `json:"travelerId"`
+				FareOption   string `json:"fareOption"`
+				TravelerType string `json:"travelerType"`
+				Price        struct {
+					Currency string `json:"currency"`
+					Total    string `json:"total"`
+					Base     string `json:"base"`
+					Taxes    []struct {
+						Amount string `json:"amount"`
+						Code   string `json:"code"`
+					} `json:"taxes"`
+				} `json:"price"`
+				FareDetailsBySegment []struct {
+					SegmentID           string `json:"segmentId"`
+					Cabin               string `json:"cabin"`
+					FareBasis           string `json:"fareBasis"`
+					Class               string `json:"class"`
+					IncludedCheckedBags struct {
+						Quantity int `json:"quantity"`
+					} `json:"includedCheckedBags"`
+				} `json:"fareDetailsBySegment"`
+			} `json:"travelerPricings"`
+		} `json:"flightOffers"`
+	} `json:"data"`
+}
+
 func searchHandler() {
 	var search searchParams
 	searchReader := bufio.NewReader(os.Stdin) // create a reader to read from stdin
@@ -234,19 +289,6 @@ func searchHandler() {
 
 	// Process and print flight search results as needed
 	fmt.Println("Se obtuvieron los siguientes resultados:")
-
-	/*for _, flight := range flightSearchResponse.Data {
-		fmt.Println("Flight ID:", flight.ID)
-		for _, itinerary := range flight.Itineraries {
-			for _, segment := range itinerary.Segments {
-				fmt.Println("Departure Time:", segment.Departure.DerpartureTime)
-				fmt.Println("Arrival Time:", segment.Arrival.ArrivalTime)
-				fmt.Println("Flight Number:", segment.CarrierCode+segment.Number)
-				fmt.Println("Aircraft Code:", segment.Aircraft.Code)
-			}
-		}
-		fmt.Println("Price:", flight.Price.Total)
-	}*/
 
 	table := tablewriter.NewWriter(os.Stdout)
 
@@ -298,11 +340,15 @@ func searchHandler() {
 		log.Fatal(err)
 	}
 	defer resp.Body.Close()
-	bodyText, err := io.ReadAll(resp.Body)
+
+	var pricingResponse PricingResponse
+	err = json.NewDecoder(resp.Body).Decode(&pricingResponse)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error decoding flight pricing response:", err)
+		return
 	}
-	fmt.Printf("%s\n", bodyText)
+
+	fmt.Println("El precio total final es de: ", pricingResponse.Data.FlightOffers[0].Price.Total)
 
 }
 
@@ -334,7 +380,9 @@ func GetBookingHandler() {
 }
 
 func main() {
-	initText := `Bievenido a goTravel!
+	initText := `Bievenido a goTravel!`
+	fmt.Print(initText)
+	text := `
 1. Realizar búsqueda.
 2. Obtener reserva.
 3. Salir
@@ -342,7 +390,7 @@ Ingrese una opción:`
 
 	for { // infinite loop
 		reader := bufio.NewReader(os.Stdin) // create a reader to read from stdin
-		fmt.Print(initText)                 // print a message
+		fmt.Print(text)                     // print a message
 		input, _ := reader.ReadString('\n') // read from stdin until a newline character is found
 		input = strings.TrimSpace(input)    // remove the trailing newline character
 

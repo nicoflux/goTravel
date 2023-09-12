@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt" // import the fmt package
-	"io"
 	"log"
 	"net/http" // import the http package
 
@@ -206,6 +205,82 @@ type FlightPriceRequest struct {
 	} `json:"data"`
 }
 
+type PricingResponse struct {
+	Data struct {
+		Type         string `json:"type"`
+		FlightOffers []struct {
+			Type                     string `json:"type"`
+			ID                       string `json:"id"`
+			Source                   string `json:"source"`
+			InstantTicketingRequired bool   `json:"instantTicketingRequired"`
+			NonHomogeneous           bool   `json:"nonHomogeneous"`
+			LastTicketingDate        string `json:"lastTicketingDate"`
+			Itineraries              []struct {
+				Segments []struct {
+					Departure struct {
+						IataCode string `json:"iataCode"`
+						At       string `json:"at"`
+					} `json:"departure,omitempty"`
+					Arrival struct {
+						IataCode string `json:"iataCode"`
+						Terminal string `json:"terminal"`
+						At       string `json:"at"`
+					} `json:"arrival,omitempty"`
+					CarrierCode string `json:"carrierCode"`
+					Number      string `json:"number"`
+					Aircraft    struct {
+						Code string `json:"code"`
+					} `json:"aircraft"`
+					Operating struct {
+						CarrierCode string `json:"carrierCode"`
+					} `json:"operating"`
+					ID            string `json:"id"`
+					NumberOfStops int    `json:"numberOfStops"`
+				} `json:"segments"`
+			} `json:"itineraries"`
+			Price struct {
+				Currency string `json:"currency"`
+				Total    string `json:"total"`
+				Base     string `json:"base"`
+				Fees     []struct {
+					Amount string `json:"amount"`
+					Type   string `json:"type"`
+				} `json:"fees"`
+				GrandTotal      string `json:"grandTotal"`
+				BillingCurrency string `json:"billingCurrency"`
+			} `json:"price"`
+			PricingOptions struct {
+				FareType                []string `json:"fareType"`
+				IncludedCheckedBagsOnly bool     `json:"includedCheckedBagsOnly"`
+			} `json:"pricingOptions"`
+			ValidatingAirlineCodes []string `json:"validatingAirlineCodes"`
+			TravelerPricings       []struct {
+				TravelerID   string `json:"travelerId"`
+				FareOption   string `json:"fareOption"`
+				TravelerType string `json:"travelerType"`
+				Price        struct {
+					Currency string `json:"currency"`
+					Total    string `json:"total"`
+					Base     string `json:"base"`
+					Taxes    []struct {
+						Amount string `json:"amount"`
+						Code   string `json:"code"`
+					} `json:"taxes"`
+				} `json:"price"`
+				FareDetailsBySegment []struct {
+					SegmentID           string `json:"segmentId"`
+					Cabin               string `json:"cabin"`
+					FareBasis           string `json:"fareBasis"`
+					Class               string `json:"class"`
+					IncludedCheckedBags struct {
+						Quantity int `json:"quantity"`
+					} `json:"includedCheckedBags"`
+				} `json:"fareDetailsBySegment"`
+			} `json:"travelerPricings"`
+		} `json:"flightOffers"`
+	} `json:"data"`
+}
+
 type booking struct {
 	NAME string `json:"name"`
 }
@@ -297,16 +372,19 @@ func searchHandler(c *gin.Context) { // function that handles the request
 }
 
 func priceHandler(c *gin.Context) { // function that handles the request
-	var search searchParams
+
+	var searchPrice FlightPriceRequest
 
 	// Call BindJSON to bind the received JSON to
 	// newAlbum.
-	if err := c.BindJSON(&search); err != nil {
+	if err := c.BindJSON(&searchPrice); err != nil {
 		return
 	}
+	fmt.Print(searchPrice)
 
 	var accessToken = getToken()
-	req, err := http.NewRequest("POST", "https://test.api.amadeus.com/v1/shopping/flight-offers/pricing", search)
+	pricingData, _ := json.Marshal(searchPrice)
+	req, err := http.NewRequest("POST", "https://test.api.amadeus.com/v1/shopping/flight-offers/pricing", bytes.NewBuffer(pricingData))
 	if err != nil {
 		panic(err)
 	}
@@ -319,12 +397,16 @@ func priceHandler(c *gin.Context) { // function that handles the request
 		log.Fatal(err)
 	}
 	defer resp.Body.Close()
-	bodyText, err3 := io.ReadAll(resp.Body)
-	if err3 != nil {
-		log.Fatal(err3)
+
+	var pricingResponse PricingResponse
+	err = json.NewDecoder(resp.Body).Decode(&pricingResponse)
+	if err != nil {
+		fmt.Println("Error decoding flight search response:", err)
+		return
 	}
-	fmt.Println(resp.StatusCode)
-	fmt.Printf("%s\n", bodyText)
+
+	c.IndentedJSON(http.StatusCreated, pricingResponse)
+
 }
 
 func bookingHandler(c *gin.Context) { // function that handles the request
