@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 )
@@ -14,20 +13,6 @@ type TokenResponse struct {
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int    `json:"expires_in"`
 }
-
-/* type PricingResponse struct {
-	FlightOffers []struct {
-		Price struct {
-			Total string `json:"total"`
-		} `json:"price"`
-
-		TravelerPricings []struct {
-			Price struct {
-				Total string `json:"total"`
-			} `json:"price"`
-		} `json:"travelerPricings"`
-	} `json:"flightOffers"`
-} */
 
 type PricingResponse struct {
 	Data struct {
@@ -104,13 +89,6 @@ type PricingResponse struct {
 		} `json:"flightOffers"`
 	} `json:"data"`
 }
-
-/* type FlightPrice struct {
-	Data struct {
-		Type         string        `json:"type"`
-		FlightOffers []interface{} `json:"flightOffers"`
-	} `json:"data"`
-} */
 
 type FlighOffers struct {
 	Data []struct {
@@ -207,84 +185,6 @@ type FlighOffers struct {
 	} `json:"dictionaries"`
 }
 
-type FlightPriceRequest struct {
-	Data struct {
-		Type         string `json:"type"`
-		FlightOffers []struct {
-			Type                     string `json:"type"`
-			ID                       string `json:"id"`
-			Source                   string `json:"source"`
-			InstantTicketingRequired bool   `json:"instantTicketingRequired"`
-			NonHomogeneous           bool   `json:"nonHomogeneous"`
-			OneWay                   bool   `json:"oneWay"`
-			LastTicketingDate        string `json:"lastTicketingDate"`
-			NumberOfBookableSeats    int    `json:"numberOfBookableSeats"`
-			Itineraries              []struct {
-				Duration string `json:"duration"`
-				Segments []struct {
-					Departure struct {
-						IataCode string `json:"iataCode"`
-						Terminal string `json:"terminal"`
-						At       string `json:"at"`
-					} `json:"departure"`
-					Arrival struct {
-						IataCode string `json:"iataCode"`
-						Terminal string `json:"terminal"`
-						At       string `json:"at"`
-					} `json:"arrival"`
-					CarrierCode string `json:"carrierCode"`
-					Number      string `json:"number"`
-					Aircraft    struct {
-						Code string `json:"code"`
-					} `json:"aircraft"`
-					Operating struct {
-						CarrierCode string `json:"carrierCode"`
-					} `json:"operating"`
-					Duration        string `json:"duration"`
-					ID              string `json:"id"`
-					NumberOfStops   int    `json:"numberOfStops"`
-					BlacklistedInEU bool   `json:"blacklistedInEU"`
-				} `json:"segments"`
-			} `json:"itineraries"`
-			Price struct {
-				Currency string `json:"currency"`
-				Total    string `json:"total"`
-				Base     string `json:"base"`
-				Fees     []struct {
-					Amount string `json:"amount"`
-					Type   string `json:"type"`
-				} `json:"fees"`
-				GrandTotal string `json:"grandTotal"`
-			} `json:"price"`
-			PricingOptions struct {
-				FareType                []string `json:"fareType"`
-				IncludedCheckedBagsOnly bool     `json:"includedCheckedBagsOnly"`
-			} `json:"pricingOptions"`
-			ValidatingAirlineCodes []string `json:"validatingAirlineCodes"`
-			TravelerPricings       []struct {
-				TravelerID   string `json:"travelerId"`
-				FareOption   string `json:"fareOption"`
-				TravelerType string `json:"travelerType"`
-				Price        struct {
-					Currency string `json:"currency"`
-					Total    string `json:"total"`
-					Base     string `json:"base"`
-				} `json:"price"`
-				FareDetailsBySegment []struct {
-					SegmentID           string `json:"segmentId"`
-					Cabin               string `json:"cabin"`
-					FareBasis           string `json:"fareBasis"`
-					Class               string `json:"class"`
-					IncludedCheckedBags struct {
-						Weight     int    `json:"weight"`
-						WeightUnit string `json:"weightUnit"`
-					} `json:"includedCheckedBags"`
-				} `json:"fareDetailsBySegment"`
-			} `json:"travelerPricings"`
-		} `json:"flightOffers"`
-	} `json:"data"`
-}
-
 type FlightSearchResponse struct {
 	Data []struct {
 		ID          string `json:"id"`
@@ -335,113 +235,6 @@ type FlightData struct {
 	} `json:"data"`
 }
 
-type BookingRequest struct {
-	Data struct {
-		Type         string `json:"type"`
-		FlightOffers []struct {
-			Type                     string `json:"type"`
-			ID                       string `json:"id"`
-			Source                   string `json:"source"`
-			InstantTicketingRequired bool   `json:"instantTicketingRequired"`
-			NonHomogeneous           bool   `json:"nonHomogeneous"`
-			LastTicketingDate        string `json:"lastTicketingDate"`
-			Itineraries              []struct {
-				Segments []struct {
-					Departure struct {
-						IataCode string `json:"iataCode"`
-						At       string `json:"at"`
-					} `json:"departure,omitempty"`
-					Arrival struct {
-						IataCode string `json:"iataCode"`
-						Terminal string `json:"terminal"`
-						At       string `json:"at"`
-					} `json:"arrival,omitempty"`
-					CarrierCode string `json:"carrierCode"`
-					Number      string `json:"number"`
-					Aircraft    struct {
-						Code string `json:"code"`
-					} `json:"aircraft"`
-					Operating struct {
-						CarrierCode string `json:"carrierCode"`
-					} `json:"operating"`
-					ID            string `json:"id"`
-					NumberOfStops int    `json:"numberOfStops"`
-				} `json:"segments"`
-			} `json:"itineraries"`
-			Price struct {
-				Currency string `json:"currency"`
-				Total    string `json:"total"`
-				Base     string `json:"base"`
-				Fees     []struct {
-					Amount string `json:"amount"`
-					Type   string `json:"type"`
-				} `json:"fees"`
-				GrandTotal      string `json:"grandTotal"`
-				BillingCurrency string `json:"billingCurrency"`
-			} `json:"price"`
-			PricingOptions struct {
-				FareType                []string `json:"fareType"`
-				IncludedCheckedBagsOnly bool     `json:"includedCheckedBagsOnly"`
-			} `json:"pricingOptions"`
-			ValidatingAirlineCodes []string `json:"validatingAirlineCodes"`
-			TravelerPricings       []struct {
-				TravelerID   string `json:"travelerId"`
-				FareOption   string `json:"fareOption"`
-				TravelerType string `json:"travelerType"`
-				Price        struct {
-					Currency string `json:"currency"`
-					Total    string `json:"total"`
-					Base     string `json:"base"`
-					Taxes    []struct {
-						Amount string `json:"amount"`
-						Code   string `json:"code"`
-					} `json:"taxes"`
-				} `json:"price"`
-				FareDetailsBySegment []struct {
-					SegmentID           string `json:"segmentId"`
-					Cabin               string `json:"cabin"`
-					FareBasis           string `json:"fareBasis"`
-					Class               string `json:"class"`
-					IncludedCheckedBags struct {
-						Quantity int `json:"quantity"`
-					} `json:"includedCheckedBags"`
-				} `json:"fareDetailsBySegment"`
-			} `json:"travelerPricings"`
-		} `json:"flightOffers"`
-		Travelers []Traveler
-		Remarks   struct {
-			General []struct {
-				SubType string `json:"subType"`
-				Text    string `json:"text"`
-			} `json:"general"`
-		} `json:"remarks"`
-		TicketingAgreement struct {
-			Option string `json:"option"`
-			Delay  string `json:"delay"`
-		} `json:"ticketingAgreement"`
-		Contacts []struct {
-			AddresseeName struct {
-				FirstName string `json:"firstName"`
-				LastName  string `json:"lastName"`
-			} `json:"addresseeName"`
-			CompanyName string `json:"companyName"`
-			Purpose     string `json:"purpose"`
-			Phones      []struct {
-				DeviceType         string `json:"deviceType"`
-				CountryCallingCode string `json:"countryCallingCode"`
-				Number             string `json:"number"`
-			} `json:"phones"`
-			EmailAddress string `json:"emailAddress"`
-			Address      struct {
-				Lines       []string `json:"lines"`
-				PostalCode  string   `json:"postalCode"`
-				CityName    string   `json:"cityName"`
-				CountryCode string   `json:"countryCode"`
-			} `json:"address"`
-		} `json:"contacts"`
-	} `json:"data"`
-}
-
 type Traveler struct {
 	ID          string `json:"id"`
 	DateOfBirth string `json:"dateOfBirth"`
@@ -470,6 +263,13 @@ type Traveler struct {
 		Nationality      string `json:"nationality"`
 		Holder           bool   `json:"holder"`
 	} `json:"documents"`
+}
+
+type BookingResponse struct {
+	Data struct {
+		Type string `json:"type"`
+		ID   string `json:"id"`
+	} `json:"data"`
 }
 
 func main() {
@@ -545,15 +345,6 @@ func main() {
 	totalPrice := flightSearchResponse.Data[0].Price.Total
 	fmt.Printf("Total Price: %s\n", totalPrice)
 
-	flightOfferJSON, err := json.Marshal(flightSearchResponse.Data[0])
-	if err != nil {
-		fmt.Println("Error al convertir a JSON:", err)
-		return
-	}
-	flightOffersJSON := `{"data":{"type": "flight-offers-pricing","flightOffers": [`
-	flightOffersJSON += string(flightOfferJSON) // Supongamos que flightSearchResponse.Data[0] es un JSON válido
-	flightOffersJSON += `]}}`
-
 	flightData := map[string]interface{}{
 		"data": map[string]interface{}{
 			"type":         "flight-offers-pricing",
@@ -584,44 +375,36 @@ func main() {
 		return
 	}
 	fmt.Println("Status Code Pricing request: ", resp2.StatusCode)
-	/* 	bodyText, err3 := io.ReadAll(resp2.Body)
-	   	if err3 != nil {
-	   		log.Fatal(err3)
-	   	}
-	   	fmt.Println(resp.StatusCode)
-	   	fmt.Printf("%s\n", bodyText) */
 
-	var bookingRequest BookingRequest
 	var traveler Traveler
-	bookingRequest.Data.FlightOffers = pricingResponse.Data.FlightOffers
+	traveler.ID = "1"
 	traveler.DateOfBirth = "1998-03-10"
 	traveler.Name.LastName = "Gonzalez"
 	traveler.Name.FirstName = "Jorge"
-	traveler.Gender = "male"
+	traveler.Gender = "MALE"
 	traveler.Contact.EmailAddress = "jorge.gonzalez833@telefonica.es"
-	//append(traveler.Contact.Phones, ) := "123456789" //country code to 56
+	traveler.Contact.Phones = []struct {
+		DeviceType         string `json:"deviceType"`
+		CountryCallingCode string `json:"countryCallingCode"`
+		Number             string `json:"number"`
+	}{
+		{
+			DeviceType:         "MOBILE",
+			CountryCallingCode: "56",
+			Number:             "123456789",
+		},
+	}
 
-	bookingRequest.Data.TicketingAgreement.Delay = "3D"
+	booking := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type":         "flight-offers-pricing",
+			"flightOffers": []interface{}{pricingResponse.Data.FlightOffers[0]},
+			"travelers":    []interface{}{traveler},
+		},
+	}
 
-	// Set valid option
-	bookingRequest.Data.TicketingAgreement.Option = "DELAY_TO_CANCEL"
-	fmt.Println("-------------------------------------------------------")
-	fmt.Println(traveler)
-	fmt.Println("-------------------------------------------------------")
-	bookingRequest.Data.Travelers = append(bookingRequest.Data.Travelers, traveler)
-	fmt.Println(bookingRequest.Data.Travelers)
-	fmt.Println("-------------------------------------------------------")
+	bookingData, _ := json.Marshal(booking)
 
-	/* 	bookingRequest.Data.Travelers[0].DateOfBirth = birthDate
-	   	bookingRequest.Data.Travelers[0].Name.FirstName = firstName
-	   	bookingRequest.Data.Travelers[0].Name.LastName = lastName
-	   	bookingRequest.Data.Travelers[0].Gender = gender
-	   	bookingRequest.Data.Travelers[0].Contact.EmailAddress = email
-	   	bookingRequest.Data.Travelers[0].Contact.Phones[0].DeviceType = "MOBILE"
-	   	bookingRequest.Data.Travelers[0].Contact.Phones[0].CountryCallingCode = "56"
-	   	bookingRequest.Data.Travelers[0].Contact.Phones[0].Number = phoneNumber */
-
-	bookingData, _ := json.Marshal(bookingRequest)
 	req3, err3 := http.NewRequest("POST", "https://test.api.amadeus.com/v1/booking/flight-orders", bytes.NewBuffer(bookingData))
 	if err != nil {
 		log.Fatal(err3)
@@ -633,10 +416,13 @@ func main() {
 		log.Fatal(err)
 	}
 	defer resp3.Body.Close()
-	bodyText3, err := io.ReadAll(resp3.Body)
-	if err3 != nil {
-		log.Fatal(err3)
-	}
-	fmt.Printf("%s\n", bodyText3)
 
+	var bookingResponse BookingResponse
+	err = json.NewDecoder(resp3.Body).Decode(&bookingResponse)
+	if err != nil {
+		fmt.Println("Error decoding response:", err)
+		return
+	}
+
+	fmt.Println("order number: ", bookingResponse.Data.ID)
 }
