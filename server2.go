@@ -3,9 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt" // import the fmt package
+	"fmt"
 	"log"
-	"net/http" // import the http package
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -19,14 +19,14 @@ type searchParams struct {
 	Adultos     string `json:"adultos"`
 }
 
+type OrderSearch struct {
+	OrderID string `json:"orderID"`
+}
+
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int    `json:"expires_in"`
-}
-
-type flightsOffer struct {
-	ID string `json:"id"`
 }
 
 type FlighOffers struct {
@@ -399,24 +399,68 @@ type Traveler struct {
 			Number             string `json:"number"`
 		} `json:"phones"`
 	} `json:"contact"`
-	Documents []struct {
-		DocumentType     string `json:"documentType"`
-		BirthPlace       string `json:"birthPlace"`
-		IssuanceLocation string `json:"issuanceLocation"`
-		IssuanceDate     string `json:"issuanceDate"`
-		Number           string `json:"number"`
-		ExpiryDate       string `json:"expiryDate"`
-		IssuanceCountry  string `json:"issuanceCountry"`
-		ValidityCountry  string `json:"validityCountry"`
-		Nationality      string `json:"nationality"`
-		Holder           bool   `json:"holder"`
-	} `json:"documents"`
 }
 
 type BookingResponse struct {
 	Data struct {
 		Type string `json:"type"`
 		ID   string `json:"id"`
+	} `json:"data"`
+}
+
+type OrderResponse struct {
+	Data struct {
+		Type      string `json:"type"`
+		ID        string `json:"id"`
+		Travelers []struct {
+			ID          string `json:"id"`
+			DateOfBirth string `json:"dateOfBirth"`
+			Gender      string `json:"gender"`
+			Name        struct {
+				FirstName string `json:"firstName"`
+				LastName  string `json:"lastName"`
+			} `json:"name"`
+			Contact struct {
+				EmailAddress string `json:"emailAddress"`
+				Phones       []struct {
+					CountryCallingCode string `json:"countryCallingCode"`
+					Number             string `json:"number"`
+				} `json:"phones"`
+			} `json:"contact,omitempty"`
+		} `json:"travelers"`
+		FlightOffers []struct {
+			ID          string `json:"id"`
+			Type        string `json:"type"`
+			Source      string `json:"source"`
+			Itineraries []struct {
+				Duration string `json:"duration"`
+				Segments []struct {
+					ID       string `json:"id"`
+					Duration string `json:"duration"`
+					Aircraft struct {
+						Code string `json:"code"`
+					} `json:"aircraft"`
+					CarrierCode string `json:"carrierCode"`
+					Operating   struct {
+						CarrierCode string `json:"carrierCode"`
+					} `json:"operating"`
+					Number    string `json:"number"`
+					Departure struct {
+						At       string `json:"at"`
+						Terminal string `json:"terminal"`
+						IataCode string `json:"iataCode"`
+					} `json:"departure"`
+					Arrival struct {
+						At       string `json:"at"`
+						Terminal string `json:"terminal"`
+						IataCode string `json:"iataCode"`
+					} `json:"arrival"`
+				} `json:"segments"`
+			} `json:"itineraries"`
+			Price struct {
+				Total string `json:"total"`
+			} `json:"price"`
+		} `json:"flightOffers"`
 	} `json:"data"`
 }
 
@@ -427,17 +471,10 @@ func getToken() string {
 		log.Fatalf("Some error occured. Err: %s", err)
 	}
 	clientID := os.Getenv("CLIENT_ID")
-	fmt.Println("client_id:", clientID)
 	clientSecret := os.Getenv("SECRET_ID")
-	fmt.Println("client_secret:", clientSecret)
-
-	// Set the token endpoint URL
 	tokenURL := "https://test.api.amadeus.com/v1/security/oauth2/token"
-
-	// Create a POST request payload
 	tokenRequestData := bytes.NewBufferString(fmt.Sprintf("grant_type=client_credentials&client_id=%s&client_secret=%s", clientID, clientSecret))
 
-	// Make the POST request to obtain the token
 	resp, err := http.Post(tokenURL, "application/x-www-form-urlencoded", tokenRequestData)
 	if err != nil {
 		fmt.Println("Error making request:", err)
@@ -445,35 +482,22 @@ func getToken() string {
 	}
 	defer resp.Body.Close()
 
-	// Decode the response JSON
 	var tokenResponse TokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&tokenResponse)
 	if err != nil {
 		fmt.Println("Error decoding response:", err)
 		return "null"
 	}
-
-	// Store the access token
 	accessToken := tokenResponse.AccessToken
-	fmt.Println("Access Token:", accessToken)
 	return accessToken
 }
 
 func searchHandler(c *gin.Context) { // function that handles the request
 	var search searchParams
-
-	// Call BindJSON to bind the received JSON to
-	// newAlbum.
 	if err := c.BindJSON(&search); err != nil {
 		return
 	}
-
 	var accessToken = getToken()
-	//fmt.Println("origen:", search.Origen)
-	//fmt.Println("destino:", search.Destino)
-	//fmt.Println("fecha:", search.FechaSalida)
-	//fmt.Println("adultos:", search.Adultos)
-
 	url := fmt.Sprintf("https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=%s&destinationLocationCode=%s&departureDate=%s&adults=%v&includedAirlineCodes=LA,JA,H2&nonStop=true&currencyCode=CLP&travelClass=ECONOMY", search.Origen, search.Destino, search.FechaSalida, search.Adultos)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -488,7 +512,6 @@ func searchHandler(c *gin.Context) { // function that handles the request
 	}
 	defer resp.Body.Close()
 
-	// Decode the flight search response JSON (customize FlightSearchResponse structure)
 	var flightSearchResponse FlighOffers
 	err = json.NewDecoder(resp.Body).Decode(&flightSearchResponse)
 	if err != nil {
@@ -512,13 +535,9 @@ func searchHandler(c *gin.Context) { // function that handles the request
 func priceHandler(c *gin.Context) { // function that handles the request
 
 	var searchPrice FlightPriceRequest
-
-	// Call BindJSON to bind the received JSON to
-	// newAlbum.
 	if err := c.BindJSON(&searchPrice); err != nil {
 		return
 	}
-	//fmt.Print(searchPrice)
 
 	var accessToken = getToken()
 	pricingData, _ := json.Marshal(searchPrice)
@@ -544,10 +563,9 @@ func priceHandler(c *gin.Context) { // function that handles the request
 	}
 
 	c.IndentedJSON(http.StatusCreated, pricingResponse)
-
 }
 
-func bookingHandler(c *gin.Context) { // function that handles the request
+func bookingHandler(c *gin.Context) {
 
 	var bookingRequest BookingRequest
 	var accessToken = getToken()
@@ -555,7 +573,6 @@ func bookingHandler(c *gin.Context) { // function that handles the request
 	if err := c.BindJSON(&bookingRequest); err != nil {
 		return
 	}
-	//fmt.Println("Here is booking request: ", bookingRequest)
 
 	bookingData, _ := json.Marshal(bookingRequest)
 	req, err := http.NewRequest("POST", "https://test.api.amadeus.com/v1/booking/flight-orders", bytes.NewBuffer(bookingData))
@@ -570,13 +587,10 @@ func bookingHandler(c *gin.Context) { // function that handles the request
 	if err != nil {
 		log.Fatal(err)
 	}
-	//fmt.Print("booking status", resp.Status)
-	//fmt.Print("booking response", resp)
 	defer resp.Body.Close()
 
 	var bookingResponse BookingResponse
 	err = json.NewDecoder(resp.Body).Decode(&bookingResponse)
-	fmt.Print("booking response", bookingResponse)
 	if err != nil {
 		fmt.Println("Error decoding flight search response:", err)
 		return
@@ -585,9 +599,33 @@ func bookingHandler(c *gin.Context) { // function that handles the request
 	c.IndentedJSON(http.StatusCreated, bookingResponse)
 }
 
+func orderHandler(c *gin.Context) { // function that handles the request
+	var accessToken = getToken()
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", "https://test.api.amadeus.com/v1/booking/flight-orders/eJzTd9f3jjL2DXQBAAtOAmA%3D", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var orderResponse OrderResponse
+	err = json.NewDecoder(resp.Body).Decode(&orderResponse)
+	if err != nil {
+		fmt.Println("Error decoding flight search response:", err)
+		return
+	}
+	c.IndentedJSON(http.StatusCreated, orderResponse)
+}
+
 func main() {
 
 	router := gin.Default()
+	router.GET("/api/booking", orderHandler)
 	router.GET("/api/search", searchHandler)
 	router.POST("/api/pricing", priceHandler)
 	router.POST("/api/booking", bookingHandler)
@@ -600,8 +638,5 @@ func main() {
 	port := os.Getenv("PORT")
 
 	router.Run(server + ":" + port)
-
-	//http.HandleFunc("/api/search", searchHandler)   // handle the request on /api/search
-	//http.HandleFunc("/api/booking", bookingHandler) // handle the request on /api/booking
-	fmt.Println("Server is listening on : " + port) // print a message
+	fmt.Println("Server is listening on : " + port)
 }
