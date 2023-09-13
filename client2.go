@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
@@ -287,25 +288,30 @@ type PricingResponse struct {
 }
 
 func searchHandler() {
+
+	//Searching For Flights
 	var search searchParams
-	searchReader := bufio.NewReader(os.Stdin) // create a reader to read from stdin
+	//searchReader := bufio.NewReader(os.Stdin) // create a reader to read from stdin
 
 	fmt.Print("Aeropuerto de origen: ")
-	search.Origen, _ = searchReader.ReadString('\n')
-	search.Origen = strings.TrimSpace(search.Origen)
+	fmt.Scanln(&search.Origen)
+	//search.Origen, _ = searchReader.ReadString('\n')
+	//search.Origen = strings.TrimSpace(search.Origen)
 	fmt.Print("Aeropuerto de destino: ")
-	search.Destino, _ = searchReader.ReadString('\n')
-	search.Destino = strings.TrimSpace(search.Destino)
+	fmt.Scanln(&search.Destino)
+	//search.Destino, _ = searchReader.ReadString('\n')
+	//search.Destino = strings.TrimSpace(search.Destino)
 	fmt.Print("Fecha de salida: ")
-	search.FechaSalida, _ = searchReader.ReadString('\n')
-	search.FechaSalida = strings.TrimSpace(search.FechaSalida) //check format date YYYY-MM-DD
+	fmt.Scanln(&search.FechaSalida)
+	//search.FechaSalida, _ = searchReader.ReadString('\n')
+	//search.FechaSalida = strings.TrimSpace(search.FechaSalida) //check format date YYYY-MM-DD
 	fmt.Print("Cantidad de Adultos: ")
-	search.Adultos, _ = searchReader.ReadString('\n')
-	search.Adultos = strings.TrimSpace(search.Adultos)
+	fmt.Scanln(&search.Adultos)
+	//search.Adultos, _ = searchReader.ReadString('\n')
+	//search.Adultos = strings.TrimSpace(search.Adultos)
 
 	jsonData := fmt.Sprintf(`{"origen": "%s","destino": "%s","fecha": "%s","adultos": "%s"}`, search.Origen, search.Destino, search.FechaSalida, search.Adultos)
 
-	// Create a request with the JSON data
 	var data = strings.NewReader(jsonData)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "http://127.0.0.1:5000/api/search", data)
@@ -313,6 +319,7 @@ func searchHandler() {
 		log.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
@@ -350,26 +357,25 @@ func searchHandler() {
 			}
 		}
 	}
-
-	// Renderizar la tabla
 	table.Render()
 
+	//Selection of flight for booking
 	var flightID int
 	fmt.Print("Seleccione un vuelo (ingrese 0 para realizar nueva búsqueda): ")
-	_, err = fmt.Scanf("%d", &flightID)
+	fmt.Scanln(&flightID)
+	//_, err = fmt.Scanf("%d", &flightID)
 	if flightID == 0 {
 		return
 	}
 
+	//Getting final price of flight
 	flightPriceData := map[string]interface{}{
 		"data": map[string]interface{}{
 			"type":         "flight-offers-pricing",
 			"flightOffers": []interface{}{flightSearchResponse.Data[flightID-1]},
 		},
 	}
-	//fmt.Println(flightPriceData)
 	pricingData, _ := json.Marshal(flightPriceData)
-
 	req, err = http.NewRequest("POST", "http://127.0.0.1:5000/api/pricing", bytes.NewBuffer(pricingData))
 	if err != nil {
 		log.Fatal(err)
@@ -387,37 +393,98 @@ func searchHandler() {
 		fmt.Println("Error decoding flight pricing response:", err)
 		return
 	}
-
 	fmt.Println("El precio total final es de: ", pricingResponse.Data.FlightOffers[0].Price.Total)
 
-	var traveler Traveler
-	traveler.ID = "1"
-	traveler.DateOfBirth = "1998-03-10"
-	traveler.Name.LastName = "Gonzalez"
-	traveler.Name.FirstName = "Jorge"
-	traveler.Gender = "MALE"
-	traveler.Contact.EmailAddress = "jorge.gonzalez833@telefonica.es"
-	traveler.Contact.Phones = []struct {
-		DeviceType         string `json:"deviceType"`
-		CountryCallingCode string `json:"countryCallingCode"`
-		Number             string `json:"number"`
-	}{
-		{
-			DeviceType:         "MOBILE",
-			CountryCallingCode: "56",
-			Number:             "123456789",
-		},
+	//Booking flight
+	var travelers []Traveler
+	adults, _ := strconv.Atoi(search.Adultos)
+
+	for i := 1; i < adults+1; i++ {
+
+		// Create a new traveler
+		var traveler Traveler
+		traveler.ID = strconv.Itoa(i)
+		fmt.Println("Pasajero ", i, ":")
+		fmt.Print("Ingrese fecha de nacimiento: ")
+		fmt.Scanln(&traveler.DateOfBirth)
+		fmt.Print("Ingrese nombre: ")
+		fmt.Scanln(&traveler.Name.FirstName)
+		fmt.Print("Ingrese apellido: ")
+		fmt.Scanln(&traveler.Name.LastName)
+		fmt.Print("Ingrese sexo (MALE o FEMALE): ")
+		fmt.Scanln(&traveler.Gender)
+		fmt.Print("Ingrese correo: ")
+		fmt.Scanln(&traveler.Contact.EmailAddress)
+		fmt.Print("Ingrese número de teléfono: ")
+		var number string
+		fmt.Scanln(&number)
+
+		traveler.Contact.Phones = []struct {
+			DeviceType         string `json:"deviceType"`
+			CountryCallingCode string `json:"countryCallingCode"`
+			Number             string `json:"number"`
+		}{
+			{
+				DeviceType:         "MOBILE",
+				CountryCallingCode: "56",
+				Number:             number,
+			},
+		}
+		travelers = append(travelers, traveler)
 	}
+
+	/* 	var traveler Traveler
+		traveler.ID = "1"
+
+		fmt.Println("Pasajero 1:")
+
+		//traveler.ID = strconv.Itoa(i)
+		fmt.Println("Pasajero ", traveler.ID, ":")
+		fmt.Print("Ingrese fecha de nacimiento: ")
+		fmt.Scanln(&traveler.DateOfBirth)
+		fmt.Print("Ingrese nombre: ")
+		fmt.Scanln(&traveler.Name.FirstName)
+		fmt.Print("Ingrese apellido: ")
+		fmt.Scanln(&traveler.Name.LastName)
+		fmt.Print("Ingrese sexo (MALE o FEMALE): ")
+		fmt.Scanln(&traveler.Gender)
+		fmt.Print("Ingrese correo: ")
+		fmt.Scanln(&traveler.Contact.EmailAddress)
+		fmt.Print("Ingrese número de teléfono: ")
+		var number string
+		fmt.Scanln(&number)
+
+	 	traveler.Contact.Phones = []struct {
+			DeviceType         string `json:"deviceType"`
+			CountryCallingCode string `json:"countryCallingCode"`
+			Number             string `json:"number"`
+		}{
+			{
+				DeviceType:         "MOBILE",
+				CountryCallingCode: "56",
+				Number:             number,
+			},
+		} */
 
 	booking := map[string]interface{}{
 		"data": map[string]interface{}{
 			"type":         "flight-offers-pricing",
 			"flightOffers": []interface{}{pricingResponse.Data.FlightOffers[0]},
-			"travelers":    []interface{}{traveler},
+			"travelers":    travelers,
 		},
 	}
 
+	/* 	booking := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type":         "flight-order",
+			"flightOffers": []interface{}{pricingResponse.Data.FlightOffers[0]},
+			"travelers":    []interface{}{traveler},
+		},
+	} */
+
 	bookingData, _ := json.Marshal(booking)
+
+	//fmt.Println(string(bookingData))
 
 	req, err = http.NewRequest("POST", "http://127.0.0.1:5000/api/booking", bytes.NewBuffer(bookingData))
 	if err != nil {
@@ -476,11 +543,10 @@ func main() {
 3. Salir
 Ingrese una opción:`
 
-	for { // infinite loop
-		reader := bufio.NewReader(os.Stdin) // create a reader to read from stdin
+	for {
+		var input string
 		fmt.Print(text)
-		input, _ := reader.ReadString('\n') // read from stdin until a newline character is found
-		input = strings.TrimSpace(input)    // remove the trailing newline character
+		fmt.Scanln(&input)
 
 		switch input {
 		case "1":
@@ -489,8 +555,7 @@ Ingrese una opción:`
 			GetBookingHandler()
 		case "3":
 			fmt.Println("Hasta luego!")
-			os.Exit(0) // exit the program
-			//break ?????
+			return
 
 		default: // if the command is not 1, 2 or 3
 			fmt.Println("unknown command") // print an error message

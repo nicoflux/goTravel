@@ -19,11 +19,6 @@ type searchParams struct {
 	Adultos     string `json:"adultos"`
 }
 
-// Read implements io.Reader.
-func (searchParams) Read(p []byte) (n int, err error) {
-	panic("unimplemented")
-}
-
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
@@ -285,7 +280,6 @@ type PricingResponse struct {
 
 type BookingRequest struct {
 	Data struct {
-		Type         string `json:"type"`
 		FlightOffers []struct {
 			Type                     string `json:"type"`
 			ID                       string `json:"id"`
@@ -356,37 +350,36 @@ type BookingRequest struct {
 				} `json:"fareDetailsBySegment"`
 			} `json:"travelerPricings"`
 		} `json:"flightOffers"`
-		Travelers []Traveler
-		Remarks   struct {
-			General []struct {
-				SubType string `json:"subType"`
-				Text    string `json:"text"`
-			} `json:"general"`
-		} `json:"remarks"`
-		TicketingAgreement struct {
-			Option string `json:"option"`
-			Delay  string `json:"delay"`
-		} `json:"ticketingAgreement"`
-		Contacts []struct {
-			AddresseeName struct {
+		Travelers []struct {
+			ID          string `json:"id"`
+			DateOfBirth string `json:"dateOfBirth"`
+			Name        struct {
 				FirstName string `json:"firstName"`
 				LastName  string `json:"lastName"`
-			} `json:"addresseeName"`
-			CompanyName string `json:"companyName"`
-			Purpose     string `json:"purpose"`
-			Phones      []struct {
-				DeviceType         string `json:"deviceType"`
-				CountryCallingCode string `json:"countryCallingCode"`
-				Number             string `json:"number"`
-			} `json:"phones"`
-			EmailAddress string `json:"emailAddress"`
-			Address      struct {
-				Lines       []string `json:"lines"`
-				PostalCode  string   `json:"postalCode"`
-				CityName    string   `json:"cityName"`
-				CountryCode string   `json:"countryCode"`
-			} `json:"address"`
-		} `json:"contacts"`
+			} `json:"name"`
+			Gender  string `json:"gender"`
+			Contact struct {
+				EmailAddress string `json:"emailAddress"`
+				Phones       []struct {
+					DeviceType         string `json:"deviceType"`
+					CountryCallingCode string `json:"countryCallingCode"`
+					Number             string `json:"number"`
+				} `json:"phones"`
+			} `json:"contact"`
+			Documents []struct {
+				DocumentType     string `json:"documentType"`
+				BirthPlace       string `json:"birthPlace"`
+				IssuanceLocation string `json:"issuanceLocation"`
+				IssuanceDate     string `json:"issuanceDate"`
+				Number           string `json:"number"`
+				ExpiryDate       string `json:"expiryDate"`
+				IssuanceCountry  string `json:"issuanceCountry"`
+				ValidityCountry  string `json:"validityCountry"`
+				Nationality      string `json:"nationality"`
+				Holder           bool   `json:"holder"`
+			} `json:"documents,omitempty"`
+		} `json:"travelers"`
+		Type string `json:"type"`
 	} `json:"data"`
 }
 
@@ -577,8 +570,8 @@ func bookingHandler(c *gin.Context) { // function that handles the request
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print("booking status", resp.Status)
-	fmt.Print("booking response", resp)
+	//fmt.Print("booking status", resp.Status)
+	//fmt.Print("booking response", resp)
 	defer resp.Body.Close()
 
 	var bookingResponse BookingResponse

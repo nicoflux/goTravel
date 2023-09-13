@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type TokenResponse struct {
@@ -376,13 +377,56 @@ func main() {
 	}
 	fmt.Println("Status Code Pricing request: ", resp2.StatusCode)
 
-	var traveler Traveler
-	traveler.ID = "1"
-	traveler.DateOfBirth = "1998-03-10"
-	traveler.Name.LastName = "Gonzalez"
-	traveler.Name.FirstName = "Jorge"
-	traveler.Gender = "MALE"
-	traveler.Contact.EmailAddress = "jorge.gonzalez833@telefonica.es"
+	var travelers []Traveler
+
+	for i := 1; i < adults+1; i++ {
+
+		// Create a new traveler
+		var traveler Traveler
+		traveler.ID = strconv.Itoa(i)
+		fmt.Println("Pasajero ", i, ":")
+		fmt.Print("Ingrese fecha de nacimiento: ")
+		fmt.Scanln(&traveler.DateOfBirth)
+		fmt.Print("Ingrese nombre: ")
+		fmt.Scanln(&traveler.Name.FirstName)
+		fmt.Print("Ingrese apellido: ")
+		fmt.Scanln(&traveler.Name.LastName)
+		fmt.Print("Ingrese sexo (MALE o FEMALE): ")
+		fmt.Scanln(&traveler.Gender)
+		fmt.Print("Ingrese correo: ")
+		fmt.Scanln(&traveler.Contact.EmailAddress)
+		fmt.Print("Ingrese número de teléfono: ")
+		var number string
+		fmt.Scanln(&number)
+
+		traveler.Contact.Phones = []struct {
+			DeviceType         string `json:"deviceType"`
+			CountryCallingCode string `json:"countryCallingCode"`
+			Number             string `json:"number"`
+		}{
+			{
+				DeviceType:         "MOBILE",
+				CountryCallingCode: "56",
+				Number:             number,
+			},
+		}
+		travelers = append(travelers, traveler)
+	}
+	/* traveler.ID = "1"
+	fmt.Print("Ingrese fecha de nacimiento: ")
+	fmt.Scanln(&traveler.DateOfBirth)
+	fmt.Print("Ingrese nombre: ")
+	fmt.Scanln(&traveler.Name.FirstName)
+	fmt.Print("Ingrese apellido: ")
+	fmt.Scanln(&traveler.Name.LastName)
+	fmt.Print("Ingrese sexo (MALE o FEMALE): ")
+	fmt.Scanln(&traveler.Gender)
+	fmt.Print("Ingrese correo: ")
+	fmt.Scanln(&traveler.Contact.EmailAddress)
+	fmt.Print("Ingrese número de teléfono: ")
+	var number string
+	fmt.Scanln(&number)
+
 	traveler.Contact.Phones = []struct {
 		DeviceType         string `json:"deviceType"`
 		CountryCallingCode string `json:"countryCallingCode"`
@@ -391,19 +435,22 @@ func main() {
 		{
 			DeviceType:         "MOBILE",
 			CountryCallingCode: "56",
-			Number:             "123456789",
+			Number:             number,
 		},
-	}
+	} */
+
+	//fmt.Print(traveler)
 
 	booking := map[string]interface{}{
 		"data": map[string]interface{}{
 			"type":         "flight-offers-pricing",
 			"flightOffers": []interface{}{pricingResponse.Data.FlightOffers[0]},
-			"travelers":    []interface{}{traveler},
+			"travelers":    travelers,
 		},
 	}
 
 	bookingData, _ := json.Marshal(booking)
+	fmt.Println("booking data: ", string(bookingData))
 
 	req3, err3 := http.NewRequest("POST", "https://test.api.amadeus.com/v1/booking/flight-orders", bytes.NewBuffer(bookingData))
 	if err != nil {
