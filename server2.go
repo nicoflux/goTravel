@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,7 +11,52 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+func connectToMongoDB() (*mongo.Client, error) {
+	err := godotenv.Load("local.env")
+	if err != nil {
+		log.Fatalf("Some error occured. Err: %s", err)
+	}
+	URI := os.Getenv("CON")
+	// Use the SetServerAPIOptions() method to set the Stable API version to 1
+	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+	opts := options.Client().ApplyURI(URI).SetServerAPIOptions(serverAPI)
+
+	// Create a new client and connect to the server
+	client, err := mongo.Connect(context.TODO(), opts)
+	if err != nil {
+		panic(err)
+	}
+
+	// Send a ping to confirm a successful connection
+	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Err(); err != nil {
+		panic(err)
+	}
+	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
+	return client, nil
+}
+
+func closeMongoDBConnection(client *mongo.Client) {
+	if err := client.Disconnect(context.Background()); err != nil {
+		fmt.Println("Error al desconectar de MongoDB:", err)
+	}
+}
+
+func insertData(client *mongo.Client, booking BookingResponse) error {
+	collection := client.Database("gotravel").Collection("reservations")
+
+	_, err := collection.InsertOne(context.Background(), booking)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Documento insertado con éxito")
+	return nil
+}
 
 type searchParams struct {
 	Origen      string `json:"origen"`
@@ -594,6 +640,16 @@ func bookingHandler(c *gin.Context) {
 	if err != nil {
 		fmt.Println("Error decoding flight search response:", err)
 		return
+	}
+	mongo_client, err := connectToMongoDB()
+	if err != nil {
+		fmt.Println("Error al conectar a MongoDB:", err)
+		return
+	}
+	defer closeMongoDBConnection(mongo_client)
+
+	if err := insertData(mongo_client, bookingResponse); err != nil {
+		fmt.Println("Error al insertar datos en MongoDB:", err)
 	}
 
 	c.IndentedJSON(http.StatusCreated, bookingResponse)
