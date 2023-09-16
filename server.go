@@ -21,7 +21,7 @@ func connectToMongoDB() (*mongo.Client, error) {
 	if err != nil {
 		log.Fatalf("Some error occured. Err: %s", err)
 	}
-	URI := os.Getenv("CON")
+	URI := os.Getenv("CONNECTION_STRING")
 	// Use the SetServerAPIOptions() method to set the Stable API version to 1
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	opts := options.Client().ApplyURI(URI).SetServerAPIOptions(serverAPI)
